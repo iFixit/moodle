@@ -24,6 +24,11 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+if (!isset($_GET['dev'])) {
+   header("HTTP/1.1 301 Moved Permanently");
+   header("Location: http://exams.ifixit.com/moodle/auth/dozuki/dozuki_sso.php");
+}
+
 require('../config.php');
 require_once('lib.php');
 
