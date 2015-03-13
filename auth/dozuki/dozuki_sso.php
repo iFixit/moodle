@@ -76,7 +76,7 @@ class DozukiAuthentication {
       $newuser->email = $useremail;
       $newuser->username = $useremail;
       $newuser->firstname = $name;
-      $newuser->lastname = '';
+      $newuser->lastname = '-';
       $newuser->country = 'US'; 
       $newuser->city = ''; 
       
