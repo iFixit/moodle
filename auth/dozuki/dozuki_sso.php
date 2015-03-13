@@ -151,7 +151,7 @@ class DozukiAuthentication {
       if ($debugURL) {
          static::$dozukiSite = $debugURL;
       } else if (!static::$dozukiSite) {
-         static::$dozukiSite = $_SERVER['HTTP_HOST'];
+         static::$dozukiSite = 'ifixit.com';
       }
       $destinationURL = 'http://' . static::$dozukiSite .
        "/Guide/User/dozuki_sso?site=moodle";
