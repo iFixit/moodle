@@ -124,7 +124,7 @@ class DozukiAuthentication {
       if ($calculatedHash !== $secureHash)
          throw new moodle_exception("Secure hash is incorrect.");
 
-      $MAX_TIMESTAMP_DELTA = 3600;
+      $MAX_TIMESTAMP_DELTA = 120;
 
       if (abs(time() - (int)$_GET['t']) > $MAX_TIMESTAMP_DELTA) {
          $seconds = time() - (int)$_GET['t'];
