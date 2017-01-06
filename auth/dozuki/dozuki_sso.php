@@ -26,7 +26,7 @@ class DozukiAuthentication {
       require(self::$moodleConfigFile);
 
       $fullParams = $_SERVER['QUERY_STRING'];
-      self::verifySecureParameters($fullParams, time(), self::$secret);
+      self::verifySecureParameters($fullParams, self::$secret);
 
       $loginurl = '/login/index.php';
       if (!empty($CFG->alternateloginurl)) {
@@ -103,7 +103,15 @@ class DozukiAuthentication {
 
    // Example hash: 
    // userid=758572&email=fred%40ifixit.com&name=Fred&t=1419899081&hash=6193f3c42dc33...
-   protected static function verifySecureParameters($fullQuery, $timestamp, $secret) {
+   protected static function verifySecureParameters($fullQuery, $secret) {
+      $required = ['email', 'userid', 'name', 't', 'hash'];
+      foreach ($required as $param) {
+         if (!array_key_exists($param, $_GET)) {
+            throw new moodle_exception(
+             "Missing required URL parameter: $param");
+         }
+      }
+
       if (!preg_match("#^(.*)&hash=([^&]+)$#", $fullQuery, $matches)) {
          throw new moodle_exception(
           "Invalid query string format. &hash= must be the last parameter.");
@@ -118,8 +126,8 @@ class DozukiAuthentication {
 
       $MAX_TIMESTAMP_DELTA = 3600;
 
-      if (abs(time() - $timestamp) > $MAX_TIMESTAMP_DELTA) {
-         $seconds = time() - $timestamp;
+      if (abs(time() - (int)$_GET['t']) > $MAX_TIMESTAMP_DELTA) {
+         $seconds = time() - (int)$_GET['t'];
          throw new moodle_exception("Timestamp is off UTC by " .
             " $seconds seconds. It must be a Unix epoch timestamp within " .
           MAX_TIMESTAMP_DELTA . " seconds of UTC.");
