@@ -8,7 +8,7 @@ Feature: Restrict which blocks can be added to My home
   Background:
     Given the following "users" exist:
       | username | firstname | lastname | email |
-      | student1 | Student | 1 | student1@asd.com |
+      | student1 | Student | 1 | student1@example.com |
     And the following "courses" exist:
       | fullname | shortname | format |
       | Course 1 | C1 | topics |
@@ -25,7 +25,6 @@ Feature: Restrict which blocks can be added to My home
     And the "Add a block" select box should contain "HTML"
     And the "Add a block" select box should contain "Tags"
 
-  @javascript
   Scenario: Remove the ability to add the comments block to My home
     When I log in as "admin"
     And I set the following system permissions of "Authenticated user" role:

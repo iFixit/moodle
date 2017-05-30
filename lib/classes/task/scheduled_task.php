@@ -35,10 +35,16 @@ abstract class scheduled_task extends task_base {
     const MINUTEMIN = 0;
     /** Maximum minute value. */
     const MINUTEMAX = 59;
+
     /** Minimum hour value. */
     const HOURMIN = 0;
     /** Maximum hour value. */
     const HOURMAX = 23;
+
+    /** Minimum dayofweek value. */
+    const DAYOFWEEKMIN = 0;
+    /** Maximum dayofweek value. */
+    const DAYOFWEEKMAX = 6;
 
     /** @var string $hour - Pattern to work out the valid hours */
     private $hour = '*';
@@ -173,6 +179,9 @@ abstract class scheduled_task extends task_base {
      * @param string $dayofweek
      */
     public function set_day_of_week($dayofweek) {
+        if ($dayofweek === 'R') {
+            $dayofweek = mt_rand(self::DAYOFWEEKMIN, self::DAYOFWEEKMAX);
+        }
         $this->dayofweek = $dayofweek;
     }
 
@@ -325,7 +334,12 @@ abstract class scheduled_task extends task_base {
         // We need to change to the server timezone before using php date() functions.
         $origtz = date_default_timezone_get();
         if (!empty($CFG->timezone) && $CFG->timezone != 99) {
-            date_default_timezone_set($CFG->timezone);
+            if (in_array($CFG->timezone, \DateTimeZone::listIdentifiers())) {
+                date_default_timezone_set($CFG->timezone);
+            } else {
+                debugging('You are using a nonexistent time zone. Please update your timezones and choose a location. ' .
+                          'See https://docs.moodle.org/28/en/Location');
+            }
         }
 
         $daysinmonth = date("t");

@@ -48,7 +48,7 @@ function external_function_info($function, $strictness=MUST_EXIST) {
         // Fallback to explicit include of externallib.php.
         $function->classpath = empty($function->classpath) ? core_component::get_component_directory($function->component).'/externallib.php' : $CFG->dirroot.'/'.$function->classpath;
         if (!file_exists($function->classpath)) {
-            throw new coding_exception('Cannot find file with external function implementation');
+            throw new coding_exception('Cannot find file with external function implementation: ' . $function->classname);
         }
         require_once($function->classpath);
         if (!class_exists($function->classname)) {
@@ -526,6 +526,30 @@ class external_multiple_structure extends external_description {
  * @since Moodle 2.0
  */
 class external_function_parameters extends external_single_structure {
+
+    /**
+     * Constructor - does extra checking to prevent top level optional parameters.
+     *
+     * @param array $keys
+     * @param string $desc
+     * @param bool $required
+     * @param array $default
+     */
+    public function __construct(array $keys, $desc='', $required=VALUE_REQUIRED, $default=null) {
+        global $CFG;
+
+        if ($CFG->debugdeveloper) {
+            foreach ($keys as $key => $value) {
+                if ($value instanceof external_value) {
+                    if ($value->required == VALUE_OPTIONAL) {
+                        debugging('External function parameters: invalid OPTIONAL value specified.', DEBUG_DEVELOPER);
+                        break;
+                    }
+                }
+            }
+        }
+        parent::__construct($keys, $desc, $required, $default);
+    }
 }
 
 /**
@@ -712,7 +736,7 @@ function external_validate_format($format) {
  * All web service servers must set this singleton when parsing the $_GET and $_POST.
  *
  * @param string $text The content that may contain ULRs in need of rewriting.
- * @param int $textformat The text format, by default FORMAT_HTML.
+ * @param int $textformat The text format.
  * @param int $contextid This parameter and the next two identify the file area to use.
  * @param string $component
  * @param string $filearea helps identify the file area.
@@ -732,9 +756,8 @@ function external_format_text($text, $textformat, $contextid, $component, $filea
     }
 
     if (!$settings->get_raw()) {
-        $textformat = FORMAT_HTML; // Force format to HTML when not raw.
-        $text = format_text($text, $textformat,
-                array('noclean' => true, 'para' => false, 'filter' => $settings->get_filter()));
+        $text = format_text($text, $textformat, array('para' => false, 'filter' => $settings->get_filter()));
+        $textformat = FORMAT_HTML; // Once converted to html (from markdown, plain... lets inform consumer this is already HTML).
     }
 
     return array($text, $textformat);

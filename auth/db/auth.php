@@ -58,6 +58,11 @@ class auth_plugin_db extends auth_plugin_base {
     function user_login($username, $password) {
         global $CFG, $DB;
 
+        if ($this->is_configured() === false) {
+            debugging(get_string('auth_notconfigured', 'auth', $this->authtype));
+            return false;
+        }
+
         $extusername = core_text::convert($username, 'utf-8', $this->config->extencoding);
         $extpassword = core_text::convert($password, 'utf-8', $this->config->extencoding);
 
@@ -138,8 +143,13 @@ class auth_plugin_db extends auth_plugin_base {
      * Connect to external database.
      *
      * @return ADOConnection
+     * @throws moodle_exception
      */
     function db_init() {
+        if ($this->is_configured() === false) {
+            throw new moodle_exception('auth_dbcantconnect', 'auth_db');
+        }
+
         // Connect to the external database (forcing new connection).
         $authdb = ADONewConnection($this->config->type);
         if (!empty($this->config->debugauthdb)) {
@@ -193,18 +203,21 @@ class auth_plugin_db extends auth_plugin_base {
         if ($selectfields) {
             $select = array();
             foreach ($selectfields as $localname=>$externalname) {
-                $select[] = "$externalname AS $localname";
+                $select[] = "$externalname";
             }
             $select = implode(', ', $select);
             $sql = "SELECT $select
                       FROM {$this->config->table}
                      WHERE {$this->config->fielduser} = '".$this->ext_addslashes($extusername)."'";
+
             if ($rs = $authdb->Execute($sql)) {
                 if (!$rs->EOF) {
-                    $fields_obj = $rs->FetchObj();
-                    $fields_obj = (object)array_change_key_case((array)$fields_obj , CASE_LOWER);
-                    foreach ($selectfields as $localname=>$externalname) {
-                        $result[$localname] = core_text::convert($fields_obj->{$localname}, $this->config->extencoding, 'utf-8');
+                    $fields = $rs->FetchRow();
+                    // Convert the associative array to an array of its values so we don't have to worry about the case of its keys.
+                    $fields = array_values($fields);
+                    foreach (array_keys($selectfields) as $index => $localname) {
+                        $value = $fields[$index];
+                        $result[$localname] = core_text::convert($value, $this->config->extencoding, 'utf-8');
                      }
                  }
                  $rs->Close();
@@ -301,6 +314,7 @@ class auth_plugin_db extends auth_plugin_base {
                         $updateuser = new stdClass();
                         $updateuser->id   = $user->id;
                         $updateuser->suspended = 1;
+                        $updateuser = $this->clean_data($updateuser);
                         user_update_user($updateuser, false);
                         $trace->output(get_string('auth_dbsuspenduser', 'auth_db', array('name'=>$user->username, 'id'=>$user->id)), 1);
                     }
@@ -387,6 +401,7 @@ class auth_plugin_db extends auth_plugin_base {
                         $updateuser = new stdClass();
                         $updateuser->id = $olduser->id;
                         $updateuser->suspended = 0;
+                        $updateuser = $this->clean_data($updateuser);
                         user_update_user($updateuser);
                         $trace->output(get_string('auth_dbreviveduser', 'auth_db', array('name' => $username,
                             'id' => $olduser->id)), 1);
@@ -409,6 +424,7 @@ class auth_plugin_db extends auth_plugin_base {
                     $trace->output(get_string('auth_dbinsertuserduplicate', 'auth_db', array('username'=>$user->username, 'auth'=>$collision->auth)), 1);
                     continue;
                 }
+                $user = $this->clean_data($user);
                 try {
                     $id = user_create_user($user, false); // It is truly a new user.
                     $trace->output(get_string('auth_dbinsertuser', 'auth_db', array('name'=>$user->username, 'id'=>$id)), 1);
@@ -463,15 +479,15 @@ class auth_plugin_db extends auth_plugin_base {
         $authdb = $this->db_init();
 
         // Fetch userlist.
-        $rs = $authdb->Execute("SELECT {$this->config->fielduser} AS username
+        $rs = $authdb->Execute("SELECT {$this->config->fielduser}
                                   FROM {$this->config->table} ");
 
         if (!$rs) {
             print_error('auth_dbcantconnect','auth_db');
         } else if (!$rs->EOF) {
             while ($rec = $rs->FetchRow()) {
-                $rec = (object)array_change_key_case((array)$rec , CASE_LOWER);
-                array_push($result, $rec->username);
+                $rec = array_change_key_case((array)$rec, CASE_LOWER);
+                array_push($result, $rec[strtolower($this->config->fielduser)]);
             }
         }
 
@@ -550,6 +566,7 @@ class auth_plugin_db extends auth_plugin_base {
         }
         if ($needsupdate) {
             require_once($CFG->dirroot . '/user/lib.php');
+            $updateuser = $this->clean_data($updateuser);
             user_update_user($updateuser);
         }
         return $DB->get_record('user', array('id'=>$userid, 'deleted'=>0));
@@ -641,6 +658,18 @@ class auth_plugin_db extends auth_plugin_base {
             return true;
         }
         return ($this->config->passtype === 'internal');
+    }
+
+    /**
+     * Returns false if this plugin is enabled but not configured.
+     *
+     * @return bool
+     */
+    public function is_configured() {
+        if (!empty($this->config->type)) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -862,6 +891,30 @@ class auth_plugin_db extends auth_plugin_base {
         ini_set('display_errors', $olddisplay);
         error_reporting($CFG->debug);
         ob_end_flush();
+    }
+
+    /**
+     * Clean the user data that comes from an external database.
+     *
+     * @param array $user the user data to be validated against properties definition.
+     * @return stdClass $user the cleaned user data.
+     */
+    public function clean_data($user) {
+        if (empty($user)) {
+            return $user;
+        }
+
+        foreach ($user as $field => $value) {
+            // Get the property parameter type and do the cleaning.
+            try {
+                $property = core_user::get_property_definition($field);
+                $user->$field = clean_param($value, $property['type']);
+            } catch (coding_exception $e) {
+                debugging("The property '$field' could not be cleaned.", DEBUG_DEVELOPER);
+            }
+        }
+
+        return $user;
     }
 }
 

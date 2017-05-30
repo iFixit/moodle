@@ -7,7 +7,7 @@ Feature: Restrict activities availability
   Background:
     Given the following "users" exist:
       | username | firstname | lastname | email |
-      | teacher1 | Teacher | 1 | teacher1@asd.com |
+      | teacher1 | Teacher | 1 | teacher1@example.com |
     And the following "courses" exist:
       | fullname | shortname | category | format |
       | Course 1 | C1 | 0 | topics |
@@ -29,7 +29,6 @@ Feature: Restrict activities availability
     Then I should see "Test glossary name"
     And I should see "Test chat name"
 
-  @javascript
   Scenario: Activities can not be added when the admin restricts the permissions
     Given I log in as "admin"
     And I set the following system permissions of "Teacher" role:

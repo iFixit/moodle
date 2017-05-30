@@ -647,6 +647,13 @@ $cache = '.var_export($cache, true).';
             return;
         }
 
+        if (!is_readable($fulldir)) {
+            // TODO: MDL-51711 We should generate some diagnostic debugging information in this case
+            // because its pretty likely to lead to a missing class error further down the line.
+            // But our early setup code can't handle errors this early at the moment.
+            return;
+        }
+
         $items = new \DirectoryIterator($fulldir);
         foreach ($items as $item) {
             if ($item->isDot()) {
@@ -706,12 +713,12 @@ $cache = '.var_export($cache, true).';
      */
     protected static function load_psr_classes($basedir, $subdir = null) {
         if ($subdir) {
-            $fulldir = implode(DIRECTORY_SEPARATOR, array($basedir, $subdir));
-            $classnameprefix = preg_replace('/\//', '_', $subdir);
+            $fulldir = realpath($basedir . DIRECTORY_SEPARATOR . $subdir);
+            $classnameprefix = preg_replace('#' . preg_quote(DIRECTORY_SEPARATOR) . '#', '_', $subdir);
         } else {
             $fulldir = $basedir;
         }
-        if (!is_dir($fulldir)) {
+        if (!$fulldir || !is_dir($fulldir)) {
             return;
         }
 
