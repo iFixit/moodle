@@ -7,7 +7,7 @@ Feature: Posting to groups in a separate group discussion when restricted to gro
   Background:
     Given the following "users" exist:
       | username | firstname | lastname | email            |
-      | teacher1 | teacher1  | teacher1 | teacher1@asd.com |
+      | teacher1 | teacher1  | teacher1 | teacher1@example.com |
     And the following "courses" exist:
       | fullname | shortname | category |
       | Course 1 | C1 | 0 |
@@ -64,7 +64,6 @@ Feature: Posting to groups in a separate group discussion when restricted to gro
     And the "Group" select box should contain "All participants"
     And the "Group" select box should contain "G2G1"
 
-  @javascript
   Scenario: Teacher in all groups but without accessallgroups can post in either group but not to All Participants
     And I log in as "admin"
     And I set the following system permissions of "Non-editing teacher" role:

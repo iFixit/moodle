@@ -708,15 +708,7 @@ class coursecat implements renderable, cacheable_object, IteratorAggregate {
         }
         $managerroles = explode(',', $CFG->coursecontact);
         $cache = cache::make('core', 'coursecontacts');
-        $cacheddata = $cache->get_many(array_merge(array('basic'), array_keys($courses)));
-        // Check if cache was set for the current course contacts and it is not yet expired.
-        if (empty($cacheddata['basic']) || $cacheddata['basic']['roles'] !== $CFG->coursecontact ||
-                $cacheddata['basic']['lastreset'] < time() - self::CACHE_COURSE_CONTACTS_TTL) {
-            // Reset cache.
-            $cache->purge();
-            $cache->set('basic', array('roles' => $CFG->coursecontact, 'lastreset' => time()));
-            $cacheddata = $cache->get_many(array_merge(array('basic'), array_keys($courses)));
-        }
+        $cacheddata = $cache->get_many(array_keys($courses));
         $courseids = array();
         foreach (array_keys($courses) as $id) {
             if ($cacheddata[$id] !== false) {
@@ -1562,6 +1554,9 @@ class coursecat implements renderable, cacheable_object, IteratorAggregate {
         require_once($CFG->libdir.'/questionlib.php');
         require_once($CFG->dirroot.'/cohort/lib.php');
 
+        // Make sure we won't timeout when deleting a lot of courses.
+        $settimeout = core_php_time_limit::raise();
+
         $deletedcourses = array();
 
         // Get children. Note, we don't want to use cache here because it would be rebuilt too often.
@@ -2397,7 +2392,7 @@ class coursecat implements renderable, cacheable_object, IteratorAggregate {
      * @return bool
      */
     public function can_restore_courses_into() {
-        return has_capability('moodle/course:create', $this->get_context());
+        return has_capability('moodle/restore:restorecourse', $this->get_context());
     }
 
     /**

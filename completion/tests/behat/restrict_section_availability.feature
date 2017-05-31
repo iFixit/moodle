@@ -10,17 +10,15 @@ Feature: Restrict sections availability through completion or grade conditions
       | Course 1 | C1 | 0 |
     And the following "users" exist:
       | username | firstname | lastname | email |
-      | teacher1 | Teacher | Frist | teacher1@asd.com |
-      | student1 | Student | First | student1@asd.com |
+      | teacher1 | Teacher | Frist | teacher1@example.com |
+      | student1 | Student | First | student1@example.com |
     And the following "course enrolments" exist:
       | user | course | role |
       | teacher1 | C1 | editingteacher |
       | student1 | C1 | student |
-    And I log in as "admin"
-    And I set the following administration settings values:
-      | Enable completion tracking | 1 |
-      | Enable conditional access | 1 |
-    And I log out
+    And the following config values are set as admin:
+      | enablecompletion   | 1 |
+      | enableavailability | 1 |
 
   @javascript
   Scenario: Show section greyed-out to student when completion condition is not satisfied
@@ -73,10 +71,10 @@ Feature: Restrict sections availability through completion or grade conditions
     And I expand all fieldsets
     And I click on "Add restriction..." "button"
     And I click on "Grade" "button" in the "Add restriction..." "dialogue"
-    And I click on "min" "checkbox"
     And I set the following fields to these values:
-      | id | Grade assignment |
-      | minval | 20 |
+      | id     | Grade assignment |
+      | min    | 1                |
+      | minval | 20               |
     And I press "Save changes"
     And I log out
     When I log in as "student1"

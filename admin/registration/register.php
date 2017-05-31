@@ -39,6 +39,8 @@ require_once($CFG->dirroot . '/' . $CFG->admin . '/registration/forms.php');
 require_once($CFG->dirroot . '/webservice/lib.php');
 require_once($CFG->dirroot . '/' . $CFG->admin . '/registration/lib.php');
 
+require_sesskey();
+
 $huburl = required_param('huburl', PARAM_URL);
 $huburl = rtrim($huburl, "/");
 
@@ -177,6 +179,13 @@ if (!empty($error)) {
 
 //some Moodle.org resitration explanation
 if ($huburl == HUB_MOODLEORGHUBURL) {
+    if (!empty($registeredhub->token)) {
+        $registrationmessage = get_string('pleaserefreshregistration', 'admin');
+    } else {
+        $registrationmessage = get_string('registrationwarning', 'admin');
+    }
+    echo $OUTPUT->notification($registrationmessage);
+
     echo $OUTPUT->heading(get_string('registerwithmoodleorg', 'admin'));
     $renderer = $PAGE->get_renderer('core', 'register');
     echo $renderer->moodleorg_registration_message();

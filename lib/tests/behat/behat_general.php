@@ -79,6 +79,15 @@ class behat_general extends behat_base {
     }
 
     /**
+     * Opens Moodle site homepage.
+     *
+     * @Given /^I am on site homepage$/
+     */
+    public function i_am_on_site_homepage() {
+        $this->getSession()->visit($this->locate_path('/?redirect=0'));
+    }
+
+    /**
      * Reloads the current page.
      *
      * @Given /^I reload the page$/
@@ -235,12 +244,11 @@ class behat_general extends behat_base {
      * @param int $seconds
      */
     public function i_wait_seconds($seconds) {
-
-        if (!$this->running_javascript()) {
-            throw new DriverException('Waits are disabled in scenarios without Javascript support');
+        if ($this->running_javascript()) {
+            $this->getSession()->wait($seconds * 1000, false);
+        } else {
+            sleep($seconds);
         }
-
-        $this->getSession()->wait($seconds * 1000, false);
     }
 
     /**
@@ -448,10 +456,11 @@ class behat_general extends behat_base {
 
         try {
             $this->should_be_visible($element, $selectortype);
-            throw new ExpectationException('"' . $element . '" "' . $selectortype . '" is visible', $this->getSession());
         } catch (ExpectationException $e) {
             // All as expected.
+            return;
         }
+        throw new ExpectationException('"' . $element . '" "' . $selectortype . '" is visible', $this->getSession());
     }
 
     /**
@@ -501,13 +510,14 @@ class behat_general extends behat_base {
 
         try {
             $this->in_the_should_be_visible($element, $selectortype, $nodeelement, $nodeselectortype);
-            throw new ExpectationException(
-                '"' . $element . '" "' . $selectortype . '" in the "' . $nodeelement . '" "' . $nodeselectortype . '" is visible',
-                $this->getSession()
-            );
         } catch (ExpectationException $e) {
             // All as expected.
+            return;
         }
+        throw new ExpectationException(
+            '"' . $element . '" "' . $selectortype . '" in the "' . $nodeelement . '" "' . $nodeselectortype . '" is visible',
+            $this->getSession()
+        );
     }
 
     /**
@@ -898,12 +908,13 @@ class behat_general extends behat_base {
                 $exception,
                 false
             );
-
-            throw new ExpectationException('The "' . $element . '" "' . $selectortype . '" exists in the current page', $this->getSession());
         } catch (ElementNotFoundException $e) {
             // It passes.
             return;
         }
+
+        throw new ExpectationException('The "' . $element . '" "' . $selectortype .
+                '" exists in the current page', $this->getSession());
     }
 
     /**
@@ -968,12 +979,12 @@ class behat_general extends behat_base {
             // but we would need to duplicate the whole find_all() logic to do it, the benefit of
             // changing to 1 second sleep is not significant.
             $this->find($selector, $locator, false, $containernode, self::REDUCED_TIMEOUT);
-            throw new ExpectationException('The "' . $element . '" "' . $selectortype . '" exists in the "' .
-                $containerelement . '" "' . $containerselectortype . '"', $this->getSession());
         } catch (ElementNotFoundException $e) {
             // It passes.
             return;
         }
+        throw new ExpectationException('The "' . $element . '" "' . $selectortype . '" exists in the "' .
+                $containerelement . '" "' . $containerselectortype . '"', $this->getSession());
     }
 
     /**
@@ -982,7 +993,7 @@ class behat_general extends behat_base {
      * Example: I change window size to "small" or I change window size to "1024x768"
      *
      * @throws ExpectationException
-     * @Then /^I change window size to "([^"](small|medium|large|\d+x\d+))"$/
+     * @Then /^I change window size to "(small|medium|large|\d+x\d+)"$/
      * @param string $windowsize size of the window (small|medium|large|wxh).
      */
     public function i_change_window_size_to($windowsize) {
@@ -1106,15 +1117,15 @@ class behat_general extends behat_base {
     public function row_column_of_table_should_not_contain($row, $column, $table, $value) {
         try {
             $this->row_column_of_table_should_contain($row, $column, $table, $value);
-            // Throw exception if found.
-            throw new ExpectationException(
-                '"' . $column . '" with value "' . $value . '" is present in "' . $row . '"  row for table "' . $table . '"',
-                $this->getSession()
-            );
         } catch (ElementNotFoundException $e) {
             // Table row/column doesn't contain this value. Nothing to do.
             return;
         }
+        // Throw exception if found.
+        throw new ExpectationException(
+            '"' . $column . '" with value "' . $value . '" is present in "' . $row . '"  row for table "' . $table . '"',
+            $this->getSession()
+        );
     }
 
     /**
@@ -1167,13 +1178,13 @@ class behat_general extends behat_base {
                 try {
                     $this->row_column_of_table_should_contain($row, $column, $table, $value);
                     // Throw exception if found.
-                    throw new ExpectationException('"' . $column . '" with value "' . $value . '" is present in "' .
-                        $row . '"  row for table "' . $table . '"', $this->getSession()
-                    );
                 } catch (ElementNotFoundException $e) {
                     // Table row/column doesn't contain this value. Nothing to do.
                     continue;
                 }
+                throw new ExpectationException('"' . $column . '" with value "' . $value . '" is present in "' .
+                    $row . '"  row for table "' . $table . '"', $this->getSession()
+                );
             }
         }
     }
@@ -1400,6 +1411,28 @@ class behat_general extends behat_base {
             fwrite(STDOUT, "\033[s\n\033[0;93mPaused. Press \033[1;31mEnter/Return\033[0;93m to continue.\033[0m");
             fread(STDIN, 1024);
             fwrite(STDOUT, "\033[2A\033[u\033[2B");
+        }
+    }
+
+    /**
+     * Presses a given button in the browser.
+     * NOTE: Phantomjs and goutte driver reloads page while navigating back and forward.
+     *
+     * @Then /^I press the "(back|forward|reload)" button in the browser$/
+     * @param string $button the button to press.
+     * @throws ExpectationException
+     */
+    public function i_press_in_the_browser($button) {
+        $session = $this->getSession();
+
+        if ($button == 'back') {
+            $session->back();
+        } else if ($button == 'forward') {
+            $session->forward();
+        } else if ($button == 'reload') {
+            $session->reload();
+        } else {
+            throw new ExpectationException('Unknown browser button.', $session);
         }
     }
 }

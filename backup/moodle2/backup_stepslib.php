@@ -516,7 +516,7 @@ class backup_enrolments_structure_step extends backup_structure_step {
 
         $enrol = new backup_nested_element('enrol', array('id'), array(
             'enrol', 'status', 'name', 'enrolperiod', 'enrolstartdate',
-            'enrolenddate', 'expirynotify', 'expirytreshold', 'notifyall',
+            'enrolenddate', 'expirynotify', 'expirythreshold', 'notifyall',
             'password', 'cost', 'currency', 'roleid',
             'customint1', 'customint2', 'customint3', 'customint4', 'customint5', 'customint6', 'customint7', 'customint8',
             'customchar1', 'customchar2', 'customchar3',
@@ -926,6 +926,7 @@ class backup_gradebook_structure_step extends backup_structure_step {
     }
 
     protected function define_structure() {
+        global $CFG, $DB;
 
         // are we including user info?
         $userinfo = $this->get_setting_value('users');
@@ -986,6 +987,13 @@ class backup_gradebook_structure_step extends backup_structure_step {
         $gradebook->add_child($grade_settings);
         $grade_settings->add_child($grade_setting);
 
+        // Add attribute with gradebook calculation freeze date if needed.
+        $gradebookcalculationfreeze = get_config('core', 'gradebook_calculations_freeze_' . $this->get_courseid());
+        if ($gradebookcalculationfreeze) {
+            $gradebook->add_attributes(array('calculations_freeze'));
+            $gradebook->get_attribute('calculations_freeze')->set_value($gradebookcalculationfreeze);
+        }
+
         // Define sources
 
         //Include manual, category and the course grade item
@@ -1010,7 +1018,18 @@ class backup_gradebook_structure_step extends backup_structure_step {
 
         $letter->set_source_table('grade_letters', array('contextid' => backup::VAR_CONTEXTID));
 
-        $grade_setting->set_source_table('grade_settings', array('courseid' => backup::VAR_COURSEID));
+        // Set the grade settings source, forcing the inclusion of minmaxtouse if not present.
+        $settings = array();
+        $rs = $DB->get_recordset('grade_settings', array('courseid' => $this->get_courseid()));
+        foreach ($rs as $record) {
+            $settings[$record->name] = $record;
+        }
+        $rs->close();
+        if (!isset($settings['minmaxtouse'])) {
+            $settings['minmaxtouse'] = (object) array('name' => 'minmaxtouse', 'value' => $CFG->grade_minmaxtouse);
+        }
+        $grade_setting->set_source_array($settings);
+
 
         // Annotations (both as final as far as they are going to be exported in next steps)
         $grade_item->annotate_ids('scalefinal', 'scaleid'); // Straight as scalefinal because it's > 0
